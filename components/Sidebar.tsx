@@ -4,8 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/", label: "Overview" },
-  { href: "/board", label: "Board" },
+  { href: "/", label: "Home" },
   { href: "/projects", label: "Projects" },
   { href: "/notes", label: "Notes" },
 ];
@@ -13,17 +12,24 @@ const links = [
 export default function Sidebar() {
   const pathname = usePathname();
 
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  }
+
   return (
     <aside className="w-full border-b border-slate-800 bg-slate-950 lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r">
       <div className="p-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-          <h1 className="text-lg font-semibold text-white">Project Command Center</h1>
-          <p className="mt-1 text-sm text-slate-400">Solo dev project management hub</p>
+          <h1 className="text-lg font-semibold text-white">Omen Command Center</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Home first. Projects second.
+          </p>
         </div>
 
         <nav className="mt-6 space-y-2">
           {links.map((link) => {
-            const active = pathname === link.href;
+            const active = isActive(link.href);
 
             return (
               <Link
@@ -42,9 +48,9 @@ export default function Sidebar() {
         </nav>
 
         <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-          <p className="text-sm font-medium text-white">Version 0.1</p>
+          <p className="text-sm font-medium text-white">Version 3</p>
           <p className="mt-2 text-sm text-slate-400">
-            Mock data first. Real backend later.
+            Command center + project workspaces.
           </p>
         </div>
       </div>
