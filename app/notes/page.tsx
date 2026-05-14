@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPinnedNotes } from "@/lib/mock-projects";
+import { getPinnedNotes } from "@/lib/services/project-service";
 
 export default function NotesPage() {
   const pinnedNotes = getPinnedNotes();

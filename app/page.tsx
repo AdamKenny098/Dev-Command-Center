@@ -5,7 +5,7 @@ import {
   getNextTasks,
   getRepoWatchProjects,
   getUrgentTasks,
-} from "@/lib/mock-projects";
+} from "../lib/data/project-service"
 
 function statCard(title: string, value: string, subtitle: string) {
   return (

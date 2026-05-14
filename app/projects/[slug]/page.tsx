@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import ProjectWorkspace from "@/components/ProjectWorkspace";
-import { getProjectBySlug } from "@/lib/mock-projects";
+import { getProjectBySlug } from "../../../lib/data/project-service"
 
 type ProjectPageProps = {
   params: Promise<{

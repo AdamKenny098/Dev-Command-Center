@@ -1,6 +1,6 @@
 import ProjectBoardView from "@/components/ProjectBoardView";
 import { Project } from "@/lib/project-types";
-import { getProjectStats } from "@/lib/mock-projects";
+import { getProjectStats } from "../lib/data/project-service"
 
 type ProjectWorkspaceProps = {
   project: Project;

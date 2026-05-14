@@ -1,5 +1,5 @@
 import ProjectCard from "@/components/ProjectCard";
-import { getAllProjects } from "@/lib/mock-projects";
+import { getAllProjects } from "../../lib/data/project-service"
 
 export default function ProjectsPage() {
   const projects = getAllProjects();
