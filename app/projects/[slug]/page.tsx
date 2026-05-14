@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import ProjectWorkspace from "@/components/ProjectWorkspace";
 import { getProjectBySlug } from "../../../lib/data/project-service"
 
+
+export const dynamic = "force-dynamic";
 type ProjectPageProps = {
   params: Promise<{
     slug: string;

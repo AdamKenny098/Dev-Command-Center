@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getPinnedNotes } from "@/lib/services/project-service";
+import { getPinnedNotes } from "../../lib/data/project-service"
+
+export const dynamic = "force-dynamic";
 
 export default function NotesPage() {
   const pinnedNotes = getPinnedNotes();

@@ -7,6 +7,8 @@ import {
   getUrgentTasks,
 } from "../lib/data/project-service"
 
+export const dynamic = "force-dynamic";
+
 function statCard(title: string, value: string, subtitle: string) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
