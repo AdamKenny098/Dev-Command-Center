@@ -2,8 +2,10 @@ import "server-only";
 
 import fs from "node:fs";
 import path from "node:path";
-import { Project } from "@/lib/project-types";
+
 import { projectSeed } from "@/lib/data/project-seed";
+import type { Project } from "@/lib/project-types";
+import { nowIso, relativeLastUpdatedToIso } from "@/lib/utils/date-utils";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
@@ -28,16 +30,24 @@ export function readProjects(): Project[] {
   const raw = fs.readFileSync(PROJECTS_FILE, "utf-8");
 
   if (!raw.trim()) {
-    fs.writeFileSync(
-      PROJECTS_FILE,
-      JSON.stringify(projectSeed, null, 2),
-      "utf-8"
-    );
-
-    return projectSeed;
+    writeProjects(projectSeed);
+    return normaliseProjects(projectSeed);
   }
 
-  return JSON.parse(raw) as Project[];
+  try {
+    const parsed = JSON.parse(raw) as Project[];
+    return normaliseProjects(parsed);
+  } catch {
+    const backupName = `projects.invalid-${new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")}.json`;
+    const backupPath = path.join(DATA_DIR, backupName);
+
+    fs.renameSync(PROJECTS_FILE, backupPath);
+    writeProjects(projectSeed);
+
+    return normaliseProjects(projectSeed);
+  }
 }
 
 export function writeProjects(projects: Project[]) {
@@ -45,7 +55,50 @@ export function writeProjects(projects: Project[]) {
 
   fs.writeFileSync(
     PROJECTS_FILE,
-    JSON.stringify(projects, null, 2),
+    JSON.stringify(normaliseProjects(projects), null, 2),
     "utf-8"
   );
+}
+
+function normaliseProjects(projects: Project[]): Project[] {
+  return projects.map((project) => {
+    const updatedAt =
+      project.updatedAt ?? relativeLastUpdatedToIso(project.lastUpdated);
+
+    return {
+      ...project,
+      updatedAt,
+      archived: project.archived ?? project.status === "Archived",
+      boards: project.boards.map((board) => ({
+        ...board,
+        cards: board.cards.map((card) => ({
+          ...card,
+          archived: card.archived ?? false,
+          createdAt: card.createdAt ?? updatedAt,
+          updatedAt: card.updatedAt ?? updatedAt,
+        })),
+      })),
+      notes: project.notes.map((note) => ({
+        ...note,
+        pinned: note.pinned ?? false,
+        archived: note.archived ?? false,
+        createdAt: note.createdAt ?? updatedAt,
+        updatedAt: note.updatedAt ?? updatedAt,
+      })),
+      links: project.links ?? [],
+      activity:
+        project.activity && project.activity.length > 0
+          ? project.activity
+          : [
+              {
+                id: `seed-${project.id}`,
+                type: "system",
+                summary: "Project loaded into local command center",
+                detail:
+                  "This entry was generated while normalising older project data.",
+                createdAt: nowIso(),
+              },
+            ],
+    };
+  });
 }

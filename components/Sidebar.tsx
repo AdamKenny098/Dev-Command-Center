@@ -7,6 +7,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/projects", label: "Projects" },
   { href: "/notes", label: "Notes" },
+  { href: "/activity", label: "Activity" },
 ];
 
 export default function Sidebar() {
@@ -18,41 +19,44 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-full border-b border-slate-800 bg-slate-950 lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r">
-      <div className="p-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-          <h1 className="text-lg font-semibold text-white">Omen Command Center</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Home first. Projects second.
-          </p>
-        </div>
+    <aside className="flex min-h-dvh w-full flex-col border-r border-slate-800 bg-slate-950 p-5 lg:w-72">
+      <div>
+        <p className="text-xs uppercase tracking-[0.35em] text-red-300">
+          Omen
+        </p>
+        <h1 className="mt-3 text-2xl font-bold text-white">
+          Command Center
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-500">
+          Home first. Project workspaces second. Every edit leaves a trace.
+        </p>
+      </div>
 
-        <nav className="mt-6 space-y-2">
-          {links.map((link) => {
-            const active = isActive(link.href);
+      <nav className="mt-8 space-y-2">
+        {links.map((link) => {
+          const active = isActive(link.href);
 
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`block rounded-xl px-4 py-3 text-sm font-medium transition ${
-                  active
-                    ? "bg-white text-slate-950"
-                    : "bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`block rounded-xl border px-4 py-3 text-sm transition ${
+                active
+                  ? "border-red-500/40 bg-red-500/10 text-red-200"
+                  : "border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-slate-100"
+              }`}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+      </nav>
 
-        <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-          <p className="text-sm font-medium text-white">Version 3</p>
-          <p className="mt-2 text-sm text-slate-400">
-            Command center + project workspaces.
-          </p>
-        </div>
+      <div className="mt-auto rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p className="text-sm font-semibold text-white">Version 3.7</p>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Activity trace, full workspace editing, project settings, and a smarter home dashboard.
+        </p>
       </div>
     </aside>
   );

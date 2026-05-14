@@ -1,17 +1,87 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
-import type { TaskColumnId } from "@/lib/project-types";
+import type {
+  ProjectStatus,
+  RepoHealth,
+  TaskColumnId,
+  TaskPriority,
+} from "@/lib/project-types";
 import {
+  addProjectLink,
   addProjectNote,
+  archiveProject,
+  createProject,
+  createTaskCard,
+  deleteProjectLink,
+  deleteProjectNote,
+  deleteTaskCard,
   moveTaskCard,
   toggleProjectNotePinned,
   updateProjectFocus,
   updateProjectNextAction,
+  updateProjectNote,
+  updateProjectSettings,
+  updateTaskCard,
 } from "@/lib/services/project-service";
+import { splitLines } from "@/lib/utils/text-utils";
 
 const VALID_COLUMNS: TaskColumnId[] = ["backlog", "next", "doing", "done"];
+const VALID_PRIORITIES: TaskPriority[] = ["Low", "Medium", "High", "Critical"];
+const VALID_STATUSES: ProjectStatus[] = [
+  "Active",
+  "Planning",
+  "Blocked",
+  "Polish",
+  "Archived",
+];
+const VALID_REPO_HEALTH: RepoHealth[] = [
+  "Healthy",
+  "Watch",
+  "Needs Attention",
+];
+
+export async function createProjectAction(formData: FormData) {
+  const slug = createProject({
+    name: getRequiredString(formData, "name"),
+    summary: getRequiredString(formData, "summary"),
+    repoName: getRequiredString(formData, "repoName"),
+  });
+
+  revalidatePath("/");
+  revalidatePath("/projects");
+  redirect(`/projects/${slug}`);
+}
+
+export async function updateProjectSettingsAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+
+  updateProjectSettings(slug, {
+    name: getRequiredString(formData, "name"),
+    summary: getRequiredString(formData, "summary"),
+    status: getRequiredStatus(formData, "status"),
+    repoHealth: getRequiredRepoHealth(formData, "repoHealth"),
+    repoName: getRequiredString(formData, "repoName"),
+    focus: getRequiredString(formData, "focus"),
+    nextAction: getRequiredString(formData, "nextAction"),
+    blockers: splitLines(getOptionalString(formData, "blockers")),
+  });
+
+  revalidateProjectPaths(slug);
+}
+
+export async function archiveProjectAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+
+  archiveProject(slug);
+  revalidatePath("/");
+  revalidatePath("/projects");
+  revalidatePath("/notes");
+  revalidatePath("/activity");
+  redirect("/projects");
+}
 
 export async function updateProjectFocusAction(formData: FormData) {
   const slug = getRequiredString(formData, "slug");
@@ -29,6 +99,23 @@ export async function updateProjectNextActionAction(formData: FormData) {
   revalidateProjectPaths(slug);
 }
 
+export async function createTaskCardAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+  const boardId = getRequiredString(formData, "boardId");
+
+  createTaskCard(slug, boardId, getTaskInput(formData));
+  revalidateProjectPaths(slug);
+}
+
+export async function updateTaskCardAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+  const boardId = getRequiredString(formData, "boardId");
+  const cardId = getRequiredString(formData, "cardId");
+
+  updateTaskCard(slug, boardId, cardId, getTaskInput(formData));
+  revalidateProjectPaths(slug);
+}
+
 export async function moveTaskColumnAction(formData: FormData) {
   const slug = getRequiredString(formData, "slug");
   const boardId = getRequiredString(formData, "boardId");
@@ -39,13 +126,47 @@ export async function moveTaskColumnAction(formData: FormData) {
   revalidateProjectPaths(slug);
 }
 
+export async function deleteTaskCardAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+  const boardId = getRequiredString(formData, "boardId");
+  const cardId = getRequiredString(formData, "cardId");
+
+  deleteTaskCard(slug, boardId, cardId);
+  revalidateProjectPaths(slug);
+}
+
 export async function addProjectNoteAction(formData: FormData) {
   const slug = getRequiredString(formData, "slug");
-  const title = getRequiredString(formData, "title");
-  const content = getRequiredString(formData, "content");
-  const pinned = formData.get("pinned") === "on";
 
-  addProjectNote(slug, title, content, pinned);
+  addProjectNote(slug, {
+    title: getRequiredString(formData, "title"),
+    content: getRequiredString(formData, "content"),
+    pinned: formData.get("pinned") === "on",
+  });
+
+  revalidateProjectPaths(slug);
+  revalidatePath("/notes");
+}
+
+export async function updateProjectNoteAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+  const noteId = getRequiredString(formData, "noteId");
+
+  updateProjectNote(slug, noteId, {
+    title: getRequiredString(formData, "title"),
+    content: getRequiredString(formData, "content"),
+    pinned: formData.get("pinned") === "on",
+  });
+
+  revalidateProjectPaths(slug);
+  revalidatePath("/notes");
+}
+
+export async function deleteProjectNoteAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+  const noteId = getRequiredString(formData, "noteId");
+
+  deleteProjectNote(slug, noteId);
   revalidateProjectPaths(slug);
   revalidatePath("/notes");
 }
@@ -59,6 +180,37 @@ export async function toggleProjectNotePinnedAction(formData: FormData) {
   revalidatePath("/notes");
 }
 
+export async function addProjectLinkAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+
+  addProjectLink(slug, {
+    label: getRequiredString(formData, "label"),
+    url: getRequiredString(formData, "url"),
+    type: getRequiredString(formData, "type"),
+  });
+
+  revalidateProjectPaths(slug);
+}
+
+export async function deleteProjectLinkAction(formData: FormData) {
+  const slug = getRequiredString(formData, "slug");
+  const linkId = getRequiredString(formData, "linkId");
+
+  deleteProjectLink(slug, linkId);
+  revalidateProjectPaths(slug);
+}
+
+function getTaskInput(formData: FormData) {
+  return {
+    title: getRequiredString(formData, "title"),
+    description: getRequiredString(formData, "description"),
+    priority: getRequiredPriority(formData, "priority"),
+    due: getRequiredString(formData, "due"),
+    urgent: formData.get("urgent") === "on",
+    column: getRequiredColumn(formData, "column"),
+  };
+}
+
 function getRequiredString(formData: FormData, key: string): string {
   const value = formData.get(key);
 
@@ -69,18 +221,60 @@ function getRequiredString(formData: FormData, key: string): string {
   return value.trim();
 }
 
-function getRequiredColumn(formData: FormData, key: string): TaskColumnId {
-  const value = getRequiredString(formData, key);
+function getOptionalString(formData: FormData, key: string): string {
+  const value = formData.get(key);
 
-  if (!VALID_COLUMNS.includes(value as TaskColumnId)) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value;
+}
+
+function getRequiredColumn(formData: FormData, key: string): TaskColumnId {
+  const value = getRequiredString(formData, key) as TaskColumnId;
+
+  if (!VALID_COLUMNS.includes(value)) {
     throw new Error(`Invalid column: ${value}`);
   }
 
-  return value as TaskColumnId;
+  return value;
+}
+
+function getRequiredPriority(formData: FormData, key: string): TaskPriority {
+  const value = getRequiredString(formData, key) as TaskPriority;
+
+  if (!VALID_PRIORITIES.includes(value)) {
+    throw new Error(`Invalid priority: ${value}`);
+  }
+
+  return value;
+}
+
+function getRequiredStatus(formData: FormData, key: string): ProjectStatus {
+  const value = getRequiredString(formData, key) as ProjectStatus;
+
+  if (!VALID_STATUSES.includes(value)) {
+    throw new Error(`Invalid status: ${value}`);
+  }
+
+  return value;
+}
+
+function getRequiredRepoHealth(formData: FormData, key: string): RepoHealth {
+  const value = getRequiredString(formData, key) as RepoHealth;
+
+  if (!VALID_REPO_HEALTH.includes(value)) {
+    throw new Error(`Invalid repo health: ${value}`);
+  }
+
+  return value;
 }
 
 function revalidateProjectPaths(slug: string) {
   revalidatePath("/");
   revalidatePath("/projects");
   revalidatePath(`/projects/${slug}`);
+  revalidatePath("/notes");
+  revalidatePath("/activity");
 }

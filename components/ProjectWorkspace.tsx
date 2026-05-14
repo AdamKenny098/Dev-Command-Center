@@ -1,40 +1,31 @@
+import ProjectActivityLog from "@/components/ProjectActivityLog";
 import ProjectBoardView from "@/components/ProjectBoardView";
 import {
+  Pill,
+  projectStatusClasses,
+  repoHealthClasses,
+} from "@/components/StatusPill";
+import {
+  addProjectLinkAction,
   addProjectNoteAction,
+  archiveProjectAction,
+  deleteProjectLinkAction,
+  deleteProjectNoteAction,
   toggleProjectNotePinnedAction,
-  updateProjectFocusAction,
-  updateProjectNextActionAction,
-} from "../lib/actions/project-actions";
-import { Project } from "@/lib/project-types";
+  updateProjectNoteAction,
+  updateProjectSettingsAction,
+} from "@/lib/actions/project-actions";
+import type { Project, ProjectStatus, RepoHealth } from "@/lib/project-types";
 import { getProjectStats } from "@/lib/services/project-service";
+import { formatDateTime } from "@/lib/utils/date-utils";
+import { normaliseExternalUrl } from "@/lib/utils/text-utils";
 
 type ProjectWorkspaceProps = {
   project: Project;
 };
 
-function statusClasses(status: Project["status"]) {
-  switch (status) {
-    case "Active":
-      return "border-blue-500/30 bg-blue-500/10 text-blue-300";
-    case "Planning":
-      return "border-violet-500/30 bg-violet-500/10 text-violet-300";
-    case "Blocked":
-      return "border-red-500/30 bg-red-500/10 text-red-300";
-    default:
-      return "border-slate-700 bg-slate-800 text-slate-300";
-  }
-}
-
-function repoClasses(repoHealth: Project["repoHealth"]) {
-  switch (repoHealth) {
-    case "Healthy":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-    case "Watch":
-      return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
-    default:
-      return "border-red-500/30 bg-red-500/10 text-red-300";
-  }
-}
+const statuses: ProjectStatus[] = ["Active", "Planning", "Blocked", "Polish"];
+const repoHealthOptions: RepoHealth[] = ["Healthy", "Watch", "Needs Attention"];
 
 function statCard(title: string, value: string, subtitle: string) {
   return (
@@ -48,6 +39,7 @@ function statCard(title: string, value: string, subtitle: string) {
 
 export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
   const stats = getProjectStats(project);
+  const blockersText = project.blockers.join("\n");
 
   return (
     <div className="space-y-6">
@@ -55,61 +47,35 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">{project.name}</h1>
-
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
               {project.summary}
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <span
-                className={`rounded-full border px-3 py-1 text-xs ${statusClasses(
-                  project.status
-                )}`}
-              >
+              <Pill className={projectStatusClasses(project.status)}>
                 {project.status}
-              </span>
-
-              <span
-                className={`rounded-full border px-3 py-1 text-xs ${repoClasses(
-                  project.repoHealth
-                )}`}
-              >
+              </Pill>
+              <Pill className={repoHealthClasses(project.repoHealth)}>
                 {project.repoHealth}
-              </span>
-
+              </Pill>
               <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
                 {project.repoName}
               </span>
-
               <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                Updated {project.lastUpdated}
+                Updated {formatDateTime(project.updatedAt)}
               </span>
             </div>
           </div>
 
           <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-950 p-5 xl:max-w-sm">
             <p className="text-sm text-slate-400">Current focus</p>
-
             <p className="mt-2 text-sm leading-7 text-slate-200">
               {project.focus}
             </p>
-
-            <form action={updateProjectFocusAction} className="mt-4 flex gap-2">
-              <input type="hidden" name="slug" value={project.slug} />
-
-              <input
-                name="focus"
-                defaultValue={project.focus}
-                className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
-              />
-
-              <button
-                type="submit"
-                className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
-              >
-                Save focus
-              </button>
-            </form>
+            <p className="mt-4 text-sm text-slate-400">Next action</p>
+            <p className="mt-2 text-sm leading-7 text-slate-200">
+              {project.nextAction}
+            </p>
           </div>
         </div>
       </header>
@@ -120,19 +86,16 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
           String(stats.urgentCount),
           "Immediate pressure inside this project"
         )}
-
         {statCard(
           "Boards",
           String(stats.boardCount),
           "Separate work tracks for this project"
         )}
-
         {statCard(
           "Notes",
           String(stats.noteCount),
           "Stored context and project memory"
         )}
-
         {statCard(
           "Progress",
           `${stats.progress}%`,
@@ -141,63 +104,125 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-          <h2 className="text-xl font-semibold text-white">Overview</h2>
+        <form
+          action={updateProjectSettingsAction}
+          className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+        >
+          <input type="hidden" name="slug" value={project.slug} />
 
-          <div className="mt-5 space-y-4">
-            <div>
-              <p className="text-sm text-slate-400">Next action</p>
+          <h2 className="text-xl font-semibold text-white">Project settings</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            V3.6 project-level editing. This replaces manual JSON changes for core project metadata.
+          </p>
 
-              <div className="mt-2 rounded-xl bg-slate-950 p-4 text-sm text-slate-200">
-                <p>{project.nextAction}</p>
+          <div className="mt-5 grid gap-3">
+            <input
+              name="name"
+              defaultValue={project.name}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
 
-                <form
-                  action={updateProjectNextActionAction}
-                  className="mt-4 flex gap-2"
-                >
-                  <input type="hidden" name="slug" value={project.slug} />
+            <textarea
+              name="summary"
+              defaultValue={project.summary}
+              rows={3}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
 
-                  <input
-                    name="nextAction"
-                    defaultValue={project.nextAction}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
-                  />
+            <div className="grid gap-3 md:grid-cols-3">
+              <select
+                name="status"
+                defaultValue={project.status}
+                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+              >
+                {statuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
 
-                  <button
-                    type="submit"
-                    className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
-                  >
-                    Save next
-                  </button>
-                </form>
-              </div>
+              <select
+                name="repoHealth"
+                defaultValue={project.repoHealth}
+                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+              >
+                {repoHealthOptions.map((repoHealth) => (
+                  <option key={repoHealth} value={repoHealth}>
+                    {repoHealth}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                name="repoName"
+                defaultValue={project.repoName}
+                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+              />
             </div>
 
-            <div>
-              <p className="text-sm text-slate-400">Blockers</p>
+            <input
+              name="focus"
+              defaultValue={project.focus}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
 
-              <div className="mt-2 space-y-3">
-                {project.blockers.length === 0 ? (
-                  <div className="rounded-xl bg-slate-950 p-4 text-sm text-slate-300">
-                    No blockers recorded.
-                  </div>
-                ) : (
-                  project.blockers.map((blocker, index) => (
-                    <div
-                      key={index}
-                      className="rounded-xl bg-slate-950 p-4 text-sm text-slate-300"
-                    >
-                      {blocker}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <input
+              name="nextAction"
+              defaultValue={project.nextAction}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
+
+            <textarea
+              name="blockers"
+              defaultValue={blockersText}
+              rows={4}
+              placeholder="One blocker per line"
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
+
+            <button
+              type="submit"
+              className="w-fit rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
+            >
+              Save project settings
+            </button>
           </div>
-        </div>
+        </form>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
           <h2 className="text-xl font-semibold text-white">Project links</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Keep repos, docs, builds, notes, and references tied to the project.
+          </p>
+
+          <form action={addProjectLinkAction} className="mt-5 grid gap-2">
+            <input type="hidden" name="slug" value={project.slug} />
+            <input
+              name="label"
+              placeholder="Label"
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
+            <div className="grid gap-2 md:grid-cols-[1fr_8rem]">
+              <input
+                name="url"
+                placeholder="URL"
+                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+              />
+              <input
+                name="type"
+                placeholder="Type"
+                defaultValue="Docs"
+                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-fit rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
+            >
+              Add link
+            </button>
+          </form>
 
           <div className="mt-5 space-y-3">
             {project.links.map((link) => (
@@ -206,9 +231,8 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                   <div>
                     <p className="font-medium text-white">{link.label}</p>
                     <p className="mt-1 text-sm text-slate-500">{link.type}</p>
-
                     <a
-                      href={link.url}
+                      href={normaliseExternalUrl(link.url)}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 block break-all text-sm text-slate-300 hover:text-red-300"
@@ -216,6 +240,17 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                       {link.url}
                     </a>
                   </div>
+
+                  <form action={deleteProjectLinkAction}>
+                    <input type="hidden" name="slug" value={project.slug} />
+                    <input type="hidden" name="linkId" value={link.id} />
+                    <button
+                      type="submit"
+                      className="text-xs text-slate-500 hover:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  </form>
                 </div>
               </div>
             ))}
@@ -225,10 +260,8 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
 
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-white">Boards</h2>
-
         <p className="text-sm text-slate-400">
-          This is the important part. Boards are now inside projects, not the
-          whole app.
+          V3.5 complete workspace editing. Tasks can be created, changed, moved, and deleted here.
         </p>
 
         {project.boards.map((board) => (
@@ -259,19 +292,16 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
               placeholder="Note title"
               className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
             />
-
             <textarea
               name="content"
               placeholder="Note content"
               rows={4}
               className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
             />
-
             <label className="flex items-center gap-2 text-sm text-slate-400">
               <input name="pinned" type="checkbox" />
               Pin note
             </label>
-
             <button
               type="submit"
               className="w-fit rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
@@ -282,41 +312,94 @@ export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
         </form>
 
         <div className="grid gap-4 xl:grid-cols-3">
-          {project.notes.map((note) => (
-            <article
-              key={note.id}
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">
-                  {note.title}
-                </h3>
+          {project.notes
+            .filter((note) => !note.archived)
+            .map((note) => (
+              <article
+                key={note.id}
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+              >
+                <form action={updateProjectNoteAction} className="space-y-3">
+                  <input type="hidden" name="slug" value={project.slug} />
+                  <input type="hidden" name="noteId" value={note.id} />
 
-                {note.pinned && (
-                  <span className="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-300">
-                    pinned
-                  </span>
-                )}
-              </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <input
+                      name="title"
+                      defaultValue={note.title}
+                      className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-lg font-semibold text-white outline-none"
+                    />
+                    {note.pinned && (
+                      <span className="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-300">
+                        pinned
+                      </span>
+                    )}
+                  </div>
 
-              <p className="mt-4 text-sm leading-7 text-slate-300">
-                {note.content}
-              </p>
+                  <textarea
+                    name="content"
+                    defaultValue={note.content}
+                    rows={5}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm leading-7 text-slate-300 outline-none"
+                  />
 
-              <form action={toggleProjectNotePinnedAction} className="mt-4">
-                <input type="hidden" name="slug" value={project.slug} />
-                <input type="hidden" name="noteId" value={note.id} />
+                  <label className="flex items-center gap-2 text-sm text-slate-400">
+                    <input name="pinned" type="checkbox" defaultChecked={note.pinned} />
+                    Pinned
+                  </label>
 
-                <button
-                  type="submit"
-                  className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-red-500/40 hover:text-red-300"
-                >
-                  {note.pinned ? "Unpin note" : "Pin note"}
-                </button>
-              </form>
-            </article>
-          ))}
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-red-500/40 hover:text-red-300"
+                  >
+                    Save note
+                  </button>
+                </form>
+
+                <div className="mt-3 flex gap-3">
+                  <form action={toggleProjectNotePinnedAction}>
+                    <input type="hidden" name="slug" value={project.slug} />
+                    <input type="hidden" name="noteId" value={note.id} />
+                    <button
+                      type="submit"
+                      className="text-xs text-slate-500 hover:text-yellow-300"
+                    >
+                      {note.pinned ? "Unpin" : "Pin"}
+                    </button>
+                  </form>
+
+                  <form action={deleteProjectNoteAction}>
+                    <input type="hidden" name="slug" value={project.slug} />
+                    <input type="hidden" name="noteId" value={note.id} />
+                    <button
+                      type="submit"
+                      className="text-xs text-slate-500 hover:text-red-300"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </article>
+            ))}
         </div>
+      </section>
+
+      <ProjectActivityLog activity={project.activity ?? []} />
+
+      <section className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+        <h2 className="text-lg font-semibold text-red-200">Archive project</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          This hides the project from the active dashboard. The JSON record remains in place.
+        </p>
+        <form action={archiveProjectAction} className="mt-4">
+          <input type="hidden" name="slug" value={project.slug} />
+          <button
+            type="submit"
+            className="rounded-xl border border-red-500/40 px-4 py-2 text-sm text-red-200 hover:bg-red-500/10"
+          >
+            Archive project
+          </button>
+        </form>
       </section>
     </div>
   );

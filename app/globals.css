@@ -4,20 +4,15 @@
   color-scheme: dark;
 }
 
-html,
 body {
-  min-height: 100%;
-}
-
-body {
+  margin: 0;
   background: #020617;
   color: #e2e8f0;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-a {
-  text-decoration: none;
+input,
+textarea,
+select,
+button {
+  font: inherit;
 }

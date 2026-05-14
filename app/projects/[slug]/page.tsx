@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import ProjectWorkspace from "@/components/ProjectWorkspace";
-import { getProjectBySlug } from "../../../lib/services/project-service"
 
+import ProjectWorkspace from "@/components/ProjectWorkspace";
+import { getProjectBySlug } from "@/lib/services/project-service";
 
 export const dynamic = "force-dynamic";
+
 type ProjectPageProps = {
   params: Promise<{
     slug: string;
