@@ -5,7 +5,7 @@ import {
   getNextTasks,
   getRepoWatchProjects,
   getUrgentTasks,
-} from "../lib/data/project-service"
+} from "../lib/services/project-service"
 
 export const dynamic = "force-dynamic";
 

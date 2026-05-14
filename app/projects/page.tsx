@@ -1,5 +1,5 @@
 import ProjectCard from "@/components/ProjectCard";
-import { getAllProjects } from "../../lib/data/project-service"
+import { getAllProjects } from "../../lib/services/project-service"
 
 
 export const dynamic = "force-dynamic";

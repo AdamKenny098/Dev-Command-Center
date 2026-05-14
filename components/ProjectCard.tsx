@@ -1,7 +1,7 @@
 
 import Link from "next/link";
 import { Project } from "@/lib/project-types";
-import { getProjectStats } from "../lib/data/project-service"
+import { getProjectStats } from "../lib/services/project-service"
 
 type ProjectCardProps = {
   project: Project;

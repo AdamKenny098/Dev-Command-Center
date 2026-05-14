@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPinnedNotes } from "../../lib/data/project-service"
+import { getPinnedNotes } from "../../lib/services/project-service"
 
 export const dynamic = "force-dynamic";
 
