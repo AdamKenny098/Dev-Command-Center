@@ -1,6 +1,12 @@
 import ProjectBoardView from "@/components/ProjectBoardView";
+import {
+  addProjectNoteAction,
+  toggleProjectNotePinnedAction,
+  updateProjectFocusAction,
+  updateProjectNextActionAction,
+} from "../lib/actions/project-actions";
 import { Project } from "@/lib/project-types";
-import { getProjectStats } from "../lib/services/project-service"
+import { getProjectStats } from "@/lib/services/project-service";
 
 type ProjectWorkspaceProps = {
   project: Project;
@@ -40,9 +46,7 @@ function statCard(title: string, value: string, subtitle: string) {
   );
 }
 
-export default function ProjectWorkspace({
-  project,
-}: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
   const stats = getProjectStats(project);
 
   return (
@@ -51,6 +55,7 @@ export default function ProjectWorkspace({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">{project.name}</h1>
+
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
               {project.summary}
             </p>
@@ -84,9 +89,27 @@ export default function ProjectWorkspace({
 
           <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-950 p-5 xl:max-w-sm">
             <p className="text-sm text-slate-400">Current focus</p>
+
             <p className="mt-2 text-sm leading-7 text-slate-200">
               {project.focus}
             </p>
+
+            <form action={updateProjectFocusAction} className="mt-4 flex gap-2">
+              <input type="hidden" name="slug" value={project.slug} />
+
+              <input
+                name="focus"
+                defaultValue={project.focus}
+                className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+              />
+
+              <button
+                type="submit"
+                className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
+              >
+                Save focus
+              </button>
+            </form>
           </div>
         </div>
       </header>
@@ -97,16 +120,19 @@ export default function ProjectWorkspace({
           String(stats.urgentCount),
           "Immediate pressure inside this project"
         )}
+
         {statCard(
           "Boards",
           String(stats.boardCount),
           "Separate work tracks for this project"
         )}
+
         {statCard(
           "Notes",
           String(stats.noteCount),
           "Stored context and project memory"
         )}
+
         {statCard(
           "Progress",
           `${stats.progress}%`,
@@ -121,13 +147,35 @@ export default function ProjectWorkspace({
           <div className="mt-5 space-y-4">
             <div>
               <p className="text-sm text-slate-400">Next action</p>
+
               <div className="mt-2 rounded-xl bg-slate-950 p-4 text-sm text-slate-200">
-                {project.nextAction}
+                <p>{project.nextAction}</p>
+
+                <form
+                  action={updateProjectNextActionAction}
+                  className="mt-4 flex gap-2"
+                >
+                  <input type="hidden" name="slug" value={project.slug} />
+
+                  <input
+                    name="nextAction"
+                    defaultValue={project.nextAction}
+                    className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
+                  >
+                    Save next
+                  </button>
+                </form>
               </div>
             </div>
 
             <div>
               <p className="text-sm text-slate-400">Blockers</p>
+
               <div className="mt-2 space-y-3">
                 {project.blockers.length === 0 ? (
                   <div className="rounded-xl bg-slate-950 p-4 text-sm text-slate-300">
@@ -153,15 +201,20 @@ export default function ProjectWorkspace({
 
           <div className="mt-5 space-y-3">
             {project.links.map((link) => (
-              <div
-                key={link.id}
-                className="rounded-xl bg-slate-950 p-4"
-              >
+              <div key={link.id} className="rounded-xl bg-slate-950 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium text-white">{link.label}</p>
                     <p className="mt-1 text-sm text-slate-500">{link.type}</p>
-                    <p className="mt-2 text-sm text-slate-300">{link.url}</p>
+
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 block break-all text-sm text-slate-300 hover:text-red-300"
+                    >
+                      {link.url}
+                    </a>
                   </div>
                 </div>
               </div>
@@ -172,17 +225,61 @@ export default function ProjectWorkspace({
 
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-white">Boards</h2>
+
         <p className="text-sm text-slate-400">
-          This is the important part. Boards are now inside projects, not the whole app.
+          This is the important part. Boards are now inside projects, not the
+          whole app.
         </p>
 
         {project.boards.map((board) => (
-          <ProjectBoardView key={board.id} board={board} />
+          <ProjectBoardView
+            key={board.id}
+            projectSlug={project.slug}
+            board={board}
+          />
         ))}
       </section>
 
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold text-white">Project notes</h2>
+
+        <form
+          action={addProjectNoteAction}
+          className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5"
+        >
+          <input type="hidden" name="slug" value={project.slug} />
+
+          <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
+            Add note
+          </h3>
+
+          <div className="mt-4 grid gap-3">
+            <input
+              name="title"
+              placeholder="Note title"
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
+
+            <textarea
+              name="content"
+              placeholder="Note content"
+              rows={4}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none"
+            />
+
+            <label className="flex items-center gap-2 text-sm text-slate-400">
+              <input name="pinned" type="checkbox" />
+              Pin note
+            </label>
+
+            <button
+              type="submit"
+              className="w-fit rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500/40 hover:text-red-300"
+            >
+              Add note
+            </button>
+          </div>
+        </form>
 
         <div className="grid gap-4 xl:grid-cols-3">
           {project.notes.map((note) => (
@@ -191,7 +288,9 @@ export default function ProjectWorkspace({
               className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
             >
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-white">{note.title}</h3>
+                <h3 className="text-lg font-semibold text-white">
+                  {note.title}
+                </h3>
 
                 {note.pinned && (
                   <span className="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-300">
@@ -203,6 +302,18 @@ export default function ProjectWorkspace({
               <p className="mt-4 text-sm leading-7 text-slate-300">
                 {note.content}
               </p>
+
+              <form action={toggleProjectNotePinnedAction} className="mt-4">
+                <input type="hidden" name="slug" value={project.slug} />
+                <input type="hidden" name="noteId" value={note.id} />
+
+                <button
+                  type="submit"
+                  className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-red-500/40 hover:text-red-300"
+                >
+                  {note.pinned ? "Unpin note" : "Pin note"}
+                </button>
+              </form>
             </article>
           ))}
         </div>

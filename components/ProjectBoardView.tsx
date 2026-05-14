@@ -1,6 +1,8 @@
-import { ProjectBoard, TaskPriority, TaskColumnId } from "@/lib/project-types";
+import { moveTaskColumnAction } from "@/lib/actions/project-actions";
+import { ProjectBoard, TaskColumnId, TaskPriority } from "@/lib/project-types";
 
 type ProjectBoardViewProps = {
+  projectSlug: string;
   board: ProjectBoard;
 };
 
@@ -24,30 +26,31 @@ function priorityClasses(priority: TaskPriority) {
   }
 }
 
-export default function ProjectBoardView({ board }: ProjectBoardViewProps) {
+export default function ProjectBoardView({
+  projectSlug,
+  board,
+}: ProjectBoardViewProps) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <div className="mb-5">
-        <h3 className="text-xl font-semibold text-white">{board.name}</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
-          {board.description}
-        </p>
+    <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-100">{board.name}</h3>
+        <p className="mt-1 text-sm text-slate-400">{board.description}</p>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="mt-5 grid gap-4 lg:grid-cols-4">
         {columns.map((column) => {
           const cards = board.cards.filter((card) => card.column === column.key);
 
           return (
             <div
               key={column.key}
-              className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4"
+              className="rounded-xl border border-slate-800 bg-black/20 p-3"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-white">
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-200">
                   {column.title}
                 </h4>
-                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
+                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-400">
                   {cards.length}
                 </span>
               </div>
@@ -56,44 +59,69 @@ export default function ProjectBoardView({ board }: ProjectBoardViewProps) {
                 {cards.map((card) => (
                   <article
                     key={card.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                    className="rounded-xl border border-slate-800 bg-slate-950 p-3"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <h5 className="text-sm font-semibold text-white">
+                      <h5 className="text-sm font-semibold text-slate-100">
                         {card.title}
                       </h5>
 
                       {card.urgent && (
-                        <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-1 text-[10px] text-red-300">
+                        <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-red-300">
                           urgent
                         </span>
                       )}
                     </div>
 
-                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
                       {card.description}
                     </p>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full border px-2.5 py-1 text-xs ${priorityClasses(
+                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${priorityClasses(
                           card.priority
                         )}`}
                       >
                         {card.priority}
                       </span>
 
-                      <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
-                        {card.due}
+                      <span className="text-xs text-slate-500">
+                        Due: {card.due}
                       </span>
                     </div>
+
+                    <form action={moveTaskColumnAction} className="mt-3 flex gap-2">
+                      <input type="hidden" name="slug" value={projectSlug} />
+                      <input type="hidden" name="boardId" value={board.id} />
+                      <input type="hidden" name="cardId" value={card.id} />
+
+                      <select
+                        name="column"
+                        defaultValue={card.column}
+                        className="min-w-0 flex-1 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-300 outline-none"
+                      >
+                        {columns.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.title}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-red-500/40 hover:text-red-300"
+                      >
+                        Move
+                      </button>
+                    </form>
                   </article>
                 ))}
 
                 {cards.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-slate-800 p-4 text-sm text-slate-500">
+                  <p className="rounded-xl border border-dashed border-slate-800 p-3 text-xs text-slate-500">
                     Nothing here yet.
-                  </div>
+                  </p>
                 )}
               </div>
             </div>
